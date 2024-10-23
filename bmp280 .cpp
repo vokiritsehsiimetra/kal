@@ -29,6 +29,9 @@ bool BMP280::begin() {
         return false;
     }
 
+    // Read calibration data
+    readCalibrationData();
+
     // Configure the BMP280
     writeRegister(BMP280_REG_CTRL_MEAS, 0x27); // Normal mode, temp and pressure oversampling 1
     writeRegister(BMP280_REG_CONFIG, 0xA0);    // Standby time 1000ms
@@ -37,6 +40,29 @@ bool BMP280::begin() {
 
     return true;
 }
+
+void BMP280::readCalibrationData() {
+    dig_T1 = i2cReadWordData(i2c_handle, 0x88);
+    dig_T2 = i2cReadWordData(i2c_handle, 0x8A);
+    dig_T3 = i2cReadWordData(i2c_handle, 0x8C);
+}
+
+int32_t BMP280::compensateTemperature(int32_t adc_T) {
+    int32_t var1, var2, T;
+    var1 = ((((adc_T >> 3) - ((int32_t)dig_T1 << 1))) * ((int32_t)dig_T2)) >> 11;
+    var2 = (((((adc_T >> 4) - ((int32_t)dig_T1)) * ((adc_T >> 4) - ((int32_t)dig_T1))) >> 12) * ((int32_t)dig_T3)) >> 14;
+    t_fine = var1 + var2;
+    T = (t_fine * 5 + 128) >> 8;
+    return T;
+}
+
+float BMP280::readTemperature() {
+    int32_t adc_T = read24(BMP280_REG_TEMP_MSB);
+    adc_T >>= 4;
+    int32_t temp = compensateTemperature(adc_T);
+    return temp / 100.0;
+}
+
 
 void BMP280::writeRegister(uint8_t reg, uint8_t value) {
     i2cWriteByteData(i2c_handle, reg, value);

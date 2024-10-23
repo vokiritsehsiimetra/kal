@@ -10,8 +10,15 @@ public:
 
     bool begin();
     float readTemperature();
-
+    
 private:
+    int32_t t_fine;
+    uint16_t dig_T1;
+    int16_t dig_T2, dig_T3;
+
+    void readCalibrationData();
+    int32_t compensateTemperature(int32_t adc_T);
+
     int i2c_handle;
     int i2c_bus;
     int address;
